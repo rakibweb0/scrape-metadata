@@ -1,0 +1,2 @@
+https://nextjs.org
+https://ui.shadcn.com
