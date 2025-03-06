@@ -57,22 +57,26 @@ if uploaded_file is not None:
     # Read the uploaded file and extract URLs
     urls = uploaded_file.getvalue().decode("utf-8").splitlines()
 
-    # Process all the URLs
-    data = [get_meta_data(url) for url in urls]
+    # Button to trigger data scraping
+    if st.button("Get Meta Data"):
+        # Process all the URLs
+        data = [get_meta_data(url) for url in urls]
 
-    # Create a DataFrame
-    df = pd.DataFrame(data)
+        # Create a DataFrame
+        df = pd.DataFrame(data)
 
-    # Display the DataFrame
-    st.write(df)
+        # Display the DataFrame
+        st.write(df)
 
-    # Save the data to a CSV file
-    st.download_button(
-        label="Download CSV",
-        data=df.to_csv(index=False),
-        file_name="meta_data.csv",
-        mime="text/csv"
-    )
+        # Save the data to a CSV file
+        st.download_button(
+            label="Download CSV",
+            data=df.to_csv(index=False),
+            file_name="meta_data.csv",
+            mime="text/csv"
+        )
+    else:
+        st.write("Click the button to get the meta data.")
 
 else:
     st.write("Upload a text file to get started.")
