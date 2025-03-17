@@ -3,6 +3,8 @@ import requests
 from bs4 import BeautifulSoup
 import pandas as pd
 from slugify import slugify
+from urllib.parse import urljoin
+import json
 
 # Function to fetch page content
 def fetch_page_source(url, timeout=10):
@@ -20,63 +22,119 @@ def fetch_page_source(url, timeout=10):
         print(f"Error fetching {url}: {e}")
         return None
 
+# Function to get favicon
+def fetch_favicon(soup, base_url):
+    rels = ["icon", "shortcut icon", "apple-touch-icon"]
+    for rel in rels:
+        tag = soup.find("link", rel=rel)
+        if tag and tag.get("href"):
+            return urljoin(base_url, tag["href"])
+    return "No Favicon Found"
+
 # Function to get metadata
 def get_meta_data(url):
     try:
         html = fetch_page_source(url)
         if not html:
-            return {"URL": url, "Title": "Error", "Description": "Error", "OG Image": "Error", "Slug": "Error"}
+            return {
+                "name": "Error",
+                "slug": "Error",
+                "shortDescription": "Error",
+                "description": "Error",
+                "toolUrl": url,
+                "ogImage": "Error",
+                "favicon": "Error",
+                "priceModel": "free",
+                "status": "inactive",
+                "integration": [],
+                "tags": [],
+                "categoryIds": [],
+                "userInfo": {
+                    "name": "raqibnur",
+                    "email": "raqibnur24@gmail.com"
+                }
+            }
         
         soup = BeautifulSoup(html, "html.parser")
-        title = soup.title.string.strip() if soup.title else "No Title Found"
-        description = soup.find("meta", attrs={"name": "description"})
-        og_image = soup.find("meta", property="og:image")
-        description = description["content"].strip() if description else "No Description Found"
-        og_image = og_image["content"].strip() if og_image else "No OG Image Found"
-
-        slug = slugify(title)
+        #get title
+        name = soup.title.string.strip() if soup.title else "No Title Found"
+        
+        # get description
+        description_tag = soup.find("meta", attrs={"name": "description"})
+        shortDescription = description_tag["content"].strip() if description_tag else "No Description Found"
+        
+        # get og image
+        og_image_tag = soup.find("meta", property="og:image")
+        og_image = og_image_tag["content"].strip() if og_image_tag else "No OG Image Found"
+        
+        # get favicon
+        favicon = fetch_favicon(soup, url)
+        
+        # convert title to slug
+        slug = slugify(name)
 
         return {
-            "URL": url,
-            "Title": title,
-            "Description": description,
-            "OG Image": og_image,
-            "Slug": slug
+            "name": name,
+            "slug": slug,
+            "shortDescription": shortDescription,
+            "description": "",
+            "toolUrl": url,
+            "ogImage": og_image,
+            "favicon": favicon,
+            "priceModel": "free",
+            "status": "active",
+            "integration": [],
+            "tags": [],
+            "categoryIds": [],
+            "userInfo": {
+                "name": "raqibnur",
+                "email": "raqibnur24@gmail.com"
+            },
         }
     except Exception as e:
         print(f"Error processing {url}: {e}")
-        return {"URL": url, "Title": "Error", "Description": str(e), "OG Image": "Error", "Slug": "Error"}
+        return {
+            "name": "Error",
+            "slug": "Error",
+            "shortDescription": str(e),
+            "description": "Error",
+            "toolUrl": url,
+            "ogImage": "Error",
+            "favicon": "Error",
+            "priceModel": "free",
+            "status": "inactive",
+            "integration": [],
+            "tags": [],
+            "categoryIds": [],
+            "userInfo": {
+                "name": "raqibnur",
+                "email": "raqibnur24@gmail.com"
+            }
+        }
 
 # Streamlit UI to upload text file with URLs
 st.title("Website Meta Data Extractor")
 
 # File uploader
-uploaded_file = st.file_uploader("Choose a text file with URLs like: https://www.example.com", type="txt")
-
+uploaded_file = st.file_uploader("Upload a text file with URLs (one per line)", type="txt")
 if uploaded_file is not None:
-    # Read the uploaded file and extract URLs
     urls = uploaded_file.getvalue().decode("utf-8").splitlines()
 
-    # Button to trigger data scraping
     if st.button("Get Meta Data"):
-        # Process all the URLs
         data = [get_meta_data(url) for url in urls]
 
-        # Create a DataFrame
-        df = pd.DataFrame(data)
+        st.json(data)  # Display raw JSON in Streamlit
 
-        # Display the DataFrame
-        st.write(df)
+        # Save as JSON
+        json_data = json.dumps(data, indent=2)
 
-        # Save the data to a CSV file
         st.download_button(
-            label="Download CSV",
-            data=df.to_csv(index=False),
-            file_name="meta_data.csv",
-            mime="text/csv"
+            label="Download JSON",
+            data=json_data,
+            file_name="meta_data.json",
+            mime="application/json"
         )
     else:
-        st.write("Click the button to get the meta data.")
-
+        st.write("Click the button to fetch metadata.")
 else:
-    st.write("Upload a text file to get started.")
+    st.write("Please upload a .txt file to begin.")
